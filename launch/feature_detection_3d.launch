@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<launch>
+	
+	<arg name="object_prefix" default="object"/> <!-- this do not show in output but use in internal state so it must not change -->
+	<!-- object show name from filename of its picture in output. So it have to name follow 
+		this example : filename = cat_1.png , cat_2.png , dog_1.png in path which is ~/documents/objects -->
+	<arg name="objects_path"  default="~/documents/objects"/> 
+	<arg name="gui"           default="false"/>
+	<arg name="approx_sync"   default="true"/>
+	<arg name="pnp"           default="true"/>
+	<arg name="tf_example"    default="true"/>
+	<arg name="settings_path" default="~/.ros/find_object_2d.ini"/>
+	
+	<arg name="rgb_topic"         value="/camera/color/image_raw" />
+	<arg name="depth_topic"       value="/camera/depth/image_raw" />
+	<arg name="camera_info_topic" value="/camera/color/camera_info" />
+	
+	<node name="find_object_3d" pkg="find_object_2d" type="find_object_2d" >
+		<param name="gui" value="$(arg gui)" type="bool"/>
+		<param name="settings_path" value="$(arg settings_path)" type="str"/>
+		<param name="subscribe_depth" value="true" type="bool"/>
+		<param name="objects_path" value="$(arg objects_path)" type="str"/>
+		<param name="object_prefix" value="$(arg object_prefix)" type="str"/>
+		<param name="approx_sync" value="$(arg approx_sync)" type="bool"/>
+		<param name="pnp" value="$(arg pnp)" type="bool"/>
+		
+		<remap from="rgb/image_rect_color" to="$(arg rgb_topic)"/>
+		<remap from="depth_registered/image_raw" to="$(arg depth_topic)"/>
+		<remap from="depth_registered/camera_info" to="$(arg camera_info_topic)"/>
+    
+	</node>
+
+	<!-- handle object to show name from filename -->
+	<node name="feature_detection" pkg="vision_robot_ros" type="feature_detect_node" output="screen">
+		<param name="object_prefix" value="$(arg object_prefix)" type="str"/>
+		<param name="target_frame_id" value="map" type="str"/>
+  	</node>
+
+</launch>

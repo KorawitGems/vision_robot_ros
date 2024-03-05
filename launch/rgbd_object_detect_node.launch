@@ -1,0 +1,9 @@
+<launch>
+
+  <node name="object_detection" pkg="vision_robot_ros" type="rgbd_object_detect_node" output="screen">
+      <!-- <remap from="/camera/rgb/image_raw" to="$(arg rgb_topic)"/>
+      <remap from="/camera/depth/image_raw" to="$(arg rgb_topic)"/>
+      <remap from="/camera/rgb/camera_info" to="$(arg rgb_topic)"/> -->
+  </node>
+    
+</launch>
