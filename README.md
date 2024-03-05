@@ -38,7 +38,7 @@ roslaunch vision_robot_ros feature_detection_3d.launch
 
 Train an object detection model such as Tensorflow.
 
-Replace the trained model path in the source code before running.
+Replace the trained model path in launch file before running.
 
 ```bash
 roslaunch vision_robot_ros rgbd_object_detect_node.launch
