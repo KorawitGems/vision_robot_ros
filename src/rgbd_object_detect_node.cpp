@@ -17,15 +17,21 @@
 class RgbdObjectDetection {
 public:
     RgbdObjectDetection() :
+                            pnh_("~"),
                             rgb_sub_(nh_, "/camera/rgb/image_raw", 50), 
                             depth_sub_(nh_, "/camera/depth/image_raw", 50),
                             sync_(MySyncPolicy(5), rgb_sub_, depth_sub_)
     {
-        package_path_ = ros::package::getPath("vision_robot");
-        coco_path_ = package_path_ + "/config/detection/class_name_coco.txt";
+        pnh_.param<std::string>("package_name", param_package_name_, "vision_robot");
+        pnh_.param<std::string>("coco_path", param_coco_path_, "/config/detection/class_name_coco.txt");
+        pnh_.param<std::string>("model_path", param_model_path_, "/config/detection/frozen_inference_graph.pb");
+        pnh_.param<std::string>("config_path", param_config_path_, "/config/detection/ssd_mobilenet_v2_coco_config.pbtxt");
 
-        model_ = cv::dnn::readNet(package_path_ + "/config/detection/frozen_inference_graph.pb",
-                                   package_path_ + "/config/detection/ssd_mobilenet_v2_coco_config.pbtxt",
+        package_path_ = ros::package::getPath(param_package_name_);
+        coco_path_ = package_path_ + param_coco_path_;
+
+        model_ = cv::dnn::readNet(package_path_ + param_model_path_,
+                                   package_path_ + param_config_path_,
                                    "TensorFlow");
 
         loadClassNames(class_names_);
@@ -164,12 +170,19 @@ public:
 
 private:
     ros::NodeHandle nh_;
+    ros::NodeHandle pnh_;
     std::string package_path_;
     std::string coco_path_;
     cv::dnn::Net model_;
     std::vector<std::string> class_names_;
     cv::Mat colors_;
     cv::Mat ids_;
+
+    std::string param_package_name_;
+    std::string param_coco_path_;
+    std::string param_model_path_;
+    std::string param_config_path_;
+
 
     ros::Publisher image_pub_;
     ros::Publisher object_markers_pub_;

@@ -4,6 +4,12 @@
       <!-- <remap from="/camera/rgb/image_raw" to="$(arg rgb_topic)"/>
       <remap from="/camera/depth/image_raw" to="$(arg rgb_topic)"/>
       <remap from="/camera/rgb/camera_info" to="$(arg rgb_topic)"/> -->
+
+      <param name="package_name" type="string" value="vision_robot"/>
+      <param name="coco_path" type="string" value="/config/detection/class_name_coco.txt"/>
+      <param name="model_path" type="string" value="/config/detection/frozen_inference_graph.pb"/>
+      <param name="config_path" type="string" value="/config/detection/ssd_mobilenet_v2_coco_config.pbtxt"/>
+
   </node>
     
 </launch>
