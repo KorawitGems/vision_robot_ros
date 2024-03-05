@@ -4,7 +4,7 @@ This package publish Marker Array which has 3D position objects that use feature
 
 https://github.com/introlab/find-object
 
-This package Publish Marker Array which has 3D position objects that use a Deep Learning model from OpenCV DNN.
+This package publish Marker Array which has 3D position objects that use a Deep Learning model from OpenCV DNN.
 
 # Installation
 
