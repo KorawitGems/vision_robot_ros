@@ -1,11 +1,5 @@
 ## vision_robot_ros
 
-This package publish Marker Array which has 3D position objects that use feature detection from find-object.
-
-https://github.com/introlab/find-object
-
-This package publish Marker Array which has 3D position objects that use a Deep Learning model from OpenCV DNN.
-
 # Installation
 
 1. Install ROS Noetic, OpenCV, find-object, Qt, Eigen3, and roslib.
@@ -18,13 +12,16 @@ git clone https://github.com/KorawitGems/vision_robot_ros.git
 
 # Run
 
-Publish the RGB-D camera topic in the ROS system.
-
 # 1. Feature Detection
 
-Set the object picture name to name_number.png such as cat_1.png, dog_2.png.
+This node publishes a Marker Array containing 3D position objects detected using feature detection from find-object.
 
-Set the picture folder path in the launch file before running.
+https://github.com/introlab/find-object
+
+Requirements:
+
+1.Set the object picture name to name_number.png, such as cat_1.png, dog_2.png.
+2.Set the picture folder path in the launch file before running.
 
 ```bash
 roslaunch vision_robot_ros feature_detection_3d.launch
@@ -36,9 +33,12 @@ roslaunch vision_robot_ros feature_detection_3d.launch
 
 # 2. Object Detection
 
-Train an object detection model such as Tensorflow.
+This node publishes a Marker Array containing 3D position objects detected using a Deep Learning model with OpenCV DNN.
 
-Replace the trained model path in launch file before running.
+Requirements:
+
+1.Train an object detection model using a deep learning platform such as TensorFlow.
+2.Replace the trained model path in the launch file before running.
 
 ```bash
 roslaunch vision_robot_ros rgbd_object_detect_node.launch
