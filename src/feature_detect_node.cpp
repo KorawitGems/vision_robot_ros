@@ -1,3 +1,30 @@
+/*
+Copyright (c) 2011-2014, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the Universite de Sherbrooke nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include <ros/ros.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -62,12 +89,12 @@ private:
 	std::string objectName_;
 
 public:
-	ObjectVisualizer() : target_FrameId_("base_link"), objFrame_Prefix_("object"), nh_(), obj_stamp_sub(nh_, "/objectsStamped", 10), obj_info_sub(nh_, "/info", 10),
-					sync(MySyncPolicy(10), obj_stamp_sub, obj_info_sub), tf_listener_(tf_buffer_)
+	ObjectVisualizer() : target_FrameId_("base_link"), objFrame_Prefix_("object"), nh_(), obj_stamp_sub(nh_, "/objectsStamped", 2), obj_info_sub(nh_, "/info", 2),
+					sync(MySyncPolicy(5), obj_stamp_sub, obj_info_sub), tf_listener_(tf_buffer_)
 
     {
-		marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("object_markers", 10);
-		loop_publisher_timer_ = nh_.createTimer(ros::Duration(0.05), &ObjectVisualizer::ObjectPublisherCallback, this);
+		marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/object_markers", 2);
+		loop_publisher_timer_ = nh_.createTimer(ros::Duration(1.0), &ObjectVisualizer::ObjectPublisherCallback, this);
 
 		ros::NodeHandle pnh_("~");
         pnh_.param("target_frame_id", param_target_FrameId_, target_FrameId_);
@@ -75,9 +102,9 @@ public:
 		// Sync messages 
 		sync.registerCallback(boost::bind(&ObjectVisualizer::ObjectCallback, this, _1, _2));
 		objID_ = 1;
-		objColorRed_ = 0.0;
-		objColorBlue_ = 0.9;
-		objColorGreen_ = 0.0;
+		objColorRed_ = static_cast<double>(rand()) / RAND_MAX; // Generate a random value between 0.0 and 1.0
+		objColorGreen_ = static_cast<double>(rand()) / RAND_MAX;
+		objColorBlue_ = static_cast<double>(rand()) / RAND_MAX;
 		objNamePath_previous_ = "none object";
     }
 

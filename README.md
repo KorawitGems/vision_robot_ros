@@ -2,7 +2,7 @@
 
 # Installation
 
-1. Install ROS Noetic, OpenCV, find-object, Qt, Eigen3, and roslib.
+1. Install ROS Noetic, OpenCV, find-object, Qt, Eigen3, roslib and pymongo.
 
 2. Clone vision_robot_ros into your ROS workspace.
 
@@ -47,3 +47,11 @@ roslaunch vision_robot_ros rgbd_object_detect_node.launch
 <p align="center">
   <img src="image/object_detect.png" width="640" height="360"/>
 </p>
+
+# 3. Object Database
+
+Saved object's position to mongodb.
+
+```bash
+roslaunch vision_robot_ros object_mongodb.launch
+```

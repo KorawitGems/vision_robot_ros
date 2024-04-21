@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+
+  <node name="object_database" pkg="vision_robot_ros" type="objects_mongodb.py" output="screen">
+
+  </node>
+
+</launch>
