@@ -12,15 +12,16 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-#include <memory>
+#include <fstream>
 
 class RgbdObjectDetection {
 public:
     RgbdObjectDetection() :
                             pnh_("~"),
-                            rgb_sub_(nh_, "/camera/rgb/image_raw", 50), 
-                            depth_sub_(nh_, "/camera/depth/image_raw", 50),
-                            sync_(MySyncPolicy(5), rgb_sub_, depth_sub_)
+                            rgb_sub_(nh_, "/camera/rgb/image_raw", 2), 
+                            depth_sub_(nh_, "/camera/depth/image_raw", 2),
+                            camera_info_sub_(nh_, "/camera/rgb/camera_info", 2),
+                            sync_(MySyncPolicy(5), rgb_sub_, depth_sub_, camera_info_sub_)
     {
         pnh_.param<std::string>("package_name", param_package_name_, "vision_robot");
         pnh_.param<std::string>("coco_path", param_coco_path_, "/config/detection/class_name_coco.txt");
@@ -41,14 +42,11 @@ public:
         }
         ids_ = cv::Mat::ones(class_names_.size(), 1, CV_32SC1);
 
-        image_pub_ = nh_.advertise<sensor_msgs::Image>("/object_detection/rgb/image_raw", 10);
-        object_markers_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/object_detection/marker_array/single", 10);
-        text_markers_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/object_detection/marker_array/label", 10);
+        image_pub_ = nh_.advertise<sensor_msgs::Image>("/object_detection/rgb/image_raw", 1);
+        object_markers_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/object_detection/marker_array/single", 1);
+        text_markers_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/object_detection/marker_array/label", 1);
 
-        camera_info_sub_ = nh_.subscribe("/camera/rgb/camera_info", 10, &RgbdObjectDetection::cameraInfoCallback, this);
-        sync_.registerCallback(boost::bind(&RgbdObjectDetection::syncImageCallback, this, _1, _2));
-
-        projectCameraMatrix_ = cv::Mat::ones(3, 4, CV_32FC1);
+        sync_.registerCallback(boost::bind(&RgbdObjectDetection::syncImageCallback, this, _1, _2, _3));
 
         object_marker_.type = visualization_msgs::Marker::SPHERE;
         object_marker_.action = visualization_msgs::Marker::ADD;
@@ -82,7 +80,7 @@ public:
         }
     }
 
-    void targetDetection(cv::Mat& image, const cv::Mat& depth_image) {
+    void targetDetection(cv::Mat& image, const cv::Mat& depth_image, const sensor_msgs::CameraInfo::ConstPtr& camera_info_msg) {
     int image_height = image.rows;
     int image_width = image.cols;
     cv::Mat blob = cv::dnn::blobFromImage(image, 1.0, cv::Size(300, 300), cv::Scalar(127.5, 127.5, 127.5), true, false);
@@ -96,7 +94,7 @@ public:
 
     for (int i = 0; i < detection.rows; ++i) {
         float confidence = detection.at<float>(i, 2);
-        if (confidence > 0.7) {
+        if (confidence > 0.6) {
             int class_id = static_cast<int>(detection.at<float>(i, 1));
             std::string class_name = class_names_[class_id - 1];
 
@@ -121,21 +119,21 @@ public:
             object_marker_.ns = class_name;
             object_marker_.header.stamp = ros::Time::now();
             object_marker_.id = ids_.at<int>(class_id - 1);
-            object_marker_.pose.position.x = (center_x - projectCameraMatrix_.at<float>(0, 2)) * depth / projectCameraMatrix_.at<float>(0, 0);
-            object_marker_.pose.position.y = (center_y - projectCameraMatrix_.at<float>(1, 2)) * depth / projectCameraMatrix_.at<float>(1, 1);
+            object_marker_.pose.position.x = (center_x - camera_info_msg->P[2]) * depth / camera_info_msg->P[0];
+            object_marker_.pose.position.y = (center_y - camera_info_msg->P[6]) * depth / camera_info_msg->P[5];
             object_marker_.pose.position.z = depth;
             object_marker_.color.r = colors_.at<cv::Vec3b>(class_id - 1)[2] / 255.0;
             object_marker_.color.g = colors_.at<cv::Vec3b>(class_id - 1)[1] / 255.0;
             object_marker_.color.b = colors_.at<cv::Vec3b>(class_id - 1)[0] / 255.0;
             object_marker_array_.markers.push_back(object_marker_);
 
-            text_marker_.ns = class_name + "_text";
-            text_marker_.header.stamp = ros::Time::now();
-            text_marker_.id = ids_.at<int>(class_id - 1);
-            text_marker_.pose.position.x = (center_x - projectCameraMatrix_.at<float>(0, 2)) * depth / projectCameraMatrix_.at<float>(0, 0);
-            text_marker_.pose.position.y = (center_y - projectCameraMatrix_.at<float>(1, 2)) * depth / projectCameraMatrix_.at<float>(1, 1) - 1.0;
-            text_marker_.pose.position.z = depth;
-            text_marker_.text = class_name + "\nConfidence: " + std::to_string(confidence);
+            text_marker_.ns = object_marker_.ns + "_text";
+            text_marker_.header.stamp = object_marker_.header.stamp;
+            text_marker_.id = object_marker_.id;
+            text_marker_.pose.position.x = object_marker_.pose.position.x;
+            text_marker_.pose.position.y = object_marker_.pose.position.y - 1.0;
+            text_marker_.pose.position.z = object_marker_.pose.position.z;
+            text_marker_.text = object_marker_.ns + "\nConfidence: " + std::to_string(confidence);
             text_marker_array_.markers.push_back(text_marker_);
             //ids_.at<int>(class_id - 1) += 1;
         }
@@ -145,26 +143,18 @@ public:
 }
 
 
-    void syncImageCallback(const sensor_msgs::ImageConstPtr& rgb_msg, const sensor_msgs::ImageConstPtr& depth_msg) {
+    void syncImageCallback(const sensor_msgs::ImageConstPtr& rgb_msg, const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& camera_info_msg) {
         try {
             object_marker_.header.frame_id = rgb_msg->header.frame_id;
             text_marker_.header.frame_id = object_marker_.header.frame_id;
             cv_bridge::CvImagePtr color_ptr = cv_bridge::toCvCopy(rgb_msg, sensor_msgs::image_encodings::BGR8);
             cv_bridge::CvImagePtr depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1);
 
-            targetDetection(color_ptr->image, depth_ptr->image);
+            targetDetection(color_ptr->image, depth_ptr->image, camera_info_msg);
 
             image_pub_.publish(color_ptr->toImageMsg());
         } catch (cv_bridge::Exception& e) {
             ROS_ERROR("cv_bridge exception: %s", e.what());
-        }
-    }
-
-    void cameraInfoCallback(const sensor_msgs::CameraInfo::ConstPtr& camera_info_msg) {
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                projectCameraMatrix_.at<float>(i, j) = camera_info_msg->P[i * 4 + j];
-            }
         }
     }
 
@@ -183,17 +173,14 @@ private:
     std::string param_model_path_;
     std::string param_config_path_;
 
-
     ros::Publisher image_pub_;
     ros::Publisher object_markers_pub_;
     ros::Publisher text_markers_pub_;
-    ros::Subscriber camera_info_sub_;
-
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub_;
     message_filters::Subscriber<sensor_msgs::Image> depth_sub_;
-    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
+    message_filters::Subscriber<sensor_msgs::CameraInfo> camera_info_sub_;
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo> MySyncPolicy;
     message_filters::Synchronizer<MySyncPolicy> sync_;
-    cv::Mat projectCameraMatrix_;
 
     visualization_msgs::MarkerArray object_marker_array_, text_marker_array_;
     visualization_msgs::Marker object_marker_, text_marker_;
