@@ -81,66 +81,66 @@ public:
     }
 
     void targetDetection(cv::Mat& image, const cv::Mat& depth_image, const sensor_msgs::CameraInfo::ConstPtr& camera_info_msg) {
-    int image_height = image.rows;
-    int image_width = image.cols;
-    cv::Mat blob = cv::dnn::blobFromImage(image, 1.0, cv::Size(300, 300), cv::Scalar(127.5, 127.5, 127.5), true, false);
-    model_.setInput(blob);
-    cv::Mat output = model_.forward();
-    cv::Mat detection(output.size[2], output.size[3], CV_32F, output.ptr<float>());
-    //visualization_msgs::MarkerArray delete_marker_array;
-    //ids_ = cv::Mat::ones(class_names_.size(), 1, CV_32SC1);
-    object_marker_array_.markers.clear();
-    text_marker_array_.markers.clear();
+        int image_height = image.rows;
+        int image_width = image.cols;
+        cv::Mat blob = cv::dnn::blobFromImage(image, 1.0, cv::Size(300, 300), cv::Scalar(127.5, 127.5, 127.5), true, false);
+        model_.setInput(blob);
+        cv::Mat output = model_.forward();
+        cv::Mat detection(output.size[2], output.size[3], CV_32F, output.ptr<float>());
+        //visualization_msgs::MarkerArray delete_marker_array;
+        //ids_ = cv::Mat::ones(class_names_.size(), 1, CV_32SC1);
+        object_marker_array_.markers.clear();
+        text_marker_array_.markers.clear();
 
-    for (int i = 0; i < detection.rows; ++i) {
-        float confidence = detection.at<float>(i, 2);
-        if (confidence > 0.6) {
-            int class_id = static_cast<int>(detection.at<float>(i, 1));
-            std::string class_name = class_names_[class_id - 1];
+        for (int i = 0; i < detection.rows; ++i) {
+            float confidence = detection.at<float>(i, 2);
+            if (confidence > 0.6) {
+                int class_id = static_cast<int>(detection.at<float>(i, 1));
+                std::string class_name = class_names_[class_id - 1];
 
-            int left_x = static_cast<int>(detection.at<float>(i, 3) * image_width);
-            int top_y = static_cast<int>(detection.at<float>(i, 4) * image_height);
-            int right_x = static_cast<int>(detection.at<float>(i, 5) * image_width);
-            int bottom_y = static_cast<int>(detection.at<float>(i, 6) * image_height);
+                int left_x = static_cast<int>(detection.at<float>(i, 3) * image_width);
+                int top_y = static_cast<int>(detection.at<float>(i, 4) * image_height);
+                int right_x = static_cast<int>(detection.at<float>(i, 5) * image_width);
+                int bottom_y = static_cast<int>(detection.at<float>(i, 6) * image_height);
 
-            int center_x = static_cast<int>((left_x + right_x) / 2);
-            int center_y = static_cast<int>((top_y + bottom_y) / 2);
+                int center_x = static_cast<int>((left_x + right_x) / 2);
+                int center_y = static_cast<int>((top_y + bottom_y) / 2);
 
-            float depth = depth_image.at<float>(cv::Point(center_x, center_y));
-            if (std::isnan(depth) || std::isinf(depth)) continue;
+                float depth = depth_image.at<float>(cv::Point(center_x, center_y));
+                if (std::isnan(depth) || std::isinf(depth)) continue;
 
-            depth = std::max(std::min(depth, 10.0f), 0.1f);
+                depth = std::max(std::min(depth, 10.0f), 0.1f);
 
-            cv::rectangle(image, cv::Point(left_x, top_y), cv::Point(right_x, bottom_y), colors_.at<cv::Vec3b>(class_id - 1), 2);
-            cv::circle(image, cv::Point(center_x, center_y), 15, colors_.at<cv::Vec3b>(class_id - 1), cv::FILLED);
-            cv::putText(image, class_name, cv::Point(left_x, top_y - 5), cv::FONT_HERSHEY_SIMPLEX, 1, colors_.at<cv::Vec3b>(class_id - 1), 2);
-            cv::putText(image, "Confidence: " + std::to_string(confidence), cv::Point(left_x, top_y - 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, colors_.at<cv::Vec3b>(class_id - 1), 2);
+                cv::rectangle(image, cv::Point(left_x, top_y), cv::Point(right_x, bottom_y), colors_.at<cv::Vec3b>(class_id - 1), 2);
+                cv::circle(image, cv::Point(center_x, center_y), 15, colors_.at<cv::Vec3b>(class_id - 1), cv::FILLED);
+                cv::putText(image, class_name, cv::Point(left_x, top_y - 5), cv::FONT_HERSHEY_SIMPLEX, 1, colors_.at<cv::Vec3b>(class_id - 1), 2);
+                cv::putText(image, "Confidence: " + std::to_string(confidence), cv::Point(left_x, top_y - 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, colors_.at<cv::Vec3b>(class_id - 1), 2);
 
-            object_marker_.ns = class_name;
-            object_marker_.header.stamp = ros::Time::now();
-            object_marker_.id = ids_.at<int>(class_id - 1);
-            object_marker_.pose.position.x = (center_x - camera_info_msg->P[2]) * depth / camera_info_msg->P[0];
-            object_marker_.pose.position.y = (center_y - camera_info_msg->P[6]) * depth / camera_info_msg->P[5];
-            object_marker_.pose.position.z = depth;
-            object_marker_.color.r = colors_.at<cv::Vec3b>(class_id - 1)[2] / 255.0;
-            object_marker_.color.g = colors_.at<cv::Vec3b>(class_id - 1)[1] / 255.0;
-            object_marker_.color.b = colors_.at<cv::Vec3b>(class_id - 1)[0] / 255.0;
-            object_marker_array_.markers.push_back(object_marker_);
+                object_marker_.ns = class_name;
+                object_marker_.header.stamp = ros::Time::now();
+                object_marker_.id = ids_.at<int>(class_id - 1);
+                object_marker_.pose.position.x = (center_x - camera_info_msg->P[2]) * depth / camera_info_msg->P[0];
+                object_marker_.pose.position.y = (center_y - camera_info_msg->P[6]) * depth / camera_info_msg->P[5];
+                object_marker_.pose.position.z = depth;
+                object_marker_.color.r = colors_.at<cv::Vec3b>(class_id - 1)[2] / 255.0;
+                object_marker_.color.g = colors_.at<cv::Vec3b>(class_id - 1)[1] / 255.0;
+                object_marker_.color.b = colors_.at<cv::Vec3b>(class_id - 1)[0] / 255.0;
+                object_marker_array_.markers.push_back(object_marker_);
 
-            text_marker_.ns = object_marker_.ns + "_text";
-            text_marker_.header.stamp = object_marker_.header.stamp;
-            text_marker_.id = object_marker_.id;
-            text_marker_.pose.position.x = object_marker_.pose.position.x;
-            text_marker_.pose.position.y = object_marker_.pose.position.y - 1.0;
-            text_marker_.pose.position.z = object_marker_.pose.position.z;
-            text_marker_.text = object_marker_.ns + "\nConfidence: " + std::to_string(confidence);
-            text_marker_array_.markers.push_back(text_marker_);
-            //ids_.at<int>(class_id - 1) += 1;
+                text_marker_.ns = object_marker_.ns + "_text";
+                text_marker_.header.stamp = object_marker_.header.stamp;
+                text_marker_.id = object_marker_.id;
+                text_marker_.pose.position.x = object_marker_.pose.position.x;
+                text_marker_.pose.position.y = object_marker_.pose.position.y - 1.0;
+                text_marker_.pose.position.z = object_marker_.pose.position.z;
+                text_marker_.text = object_marker_.ns + "\nConfidence: " + std::to_string(confidence);
+                text_marker_array_.markers.push_back(text_marker_);
+                //ids_.at<int>(class_id - 1) += 1;
+            }
         }
+        object_markers_pub_.publish(object_marker_array_); // add new marker
+        text_markers_pub_.publish(text_marker_array_);
     }
-    object_markers_pub_.publish(object_marker_array_); // add new marker
-    text_markers_pub_.publish(text_marker_array_);
-}
 
 
     void syncImageCallback(const sensor_msgs::ImageConstPtr& rgb_msg, const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& camera_info_msg) {
